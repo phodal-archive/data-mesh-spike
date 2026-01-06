@@ -1,0 +1,53 @@
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Editor temporary files
+*~
+*.swp
+*.swo
+
+# Data Mesh Learning Environment
+# Airflow logs and generated files
+airflow/logs/*
+!airflow/logs/.gitkeep
+
+# Database data (managed by Docker volumes)
+*.db
+*.sqlite
+
+# Environment files with secrets
+.env.local
+.env.*.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+*.so
+.eggs/
+*.egg-info/
+.pytest_cache/
+
+# Node (for Backstage development)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Temporary files
+*.tmp
+*.temp
+*.log

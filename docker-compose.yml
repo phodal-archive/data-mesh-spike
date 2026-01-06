@@ -1,0 +1,16 @@
+# Data Mesh Learning Environment - Main Compose File
+# This file includes both stacks for a complete environment
+#
+# Usage:
+#   Start all services:     docker compose up -d
+#   Start Stack 1 only:     docker compose -f docker-compose.stack1.yml up -d
+#   Start Stack 2 only:     docker compose -f docker-compose.stack2.yml up -d
+#   Stop all services:      docker compose down
+#   View logs:              docker compose logs -f [service_name]
+
+version: "3.9"
+
+include:
+  - docker-compose.stack1.yml
+  - docker-compose.stack2.yml
+

@@ -1,0 +1,258 @@
+# Stack 1: Data Catalog and Orchestration
+# OpenMetadata, Apache Airflow, Trino, MariaDB
+
+version: "3.9"
+
+x-airflow-common: &airflow-common
+  image: apache/airflow:2.7.3
+  environment: &airflow-common-env
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-postgres:5432/airflow
+    AIRFLOW__CORE__FERNET_KEY: ''
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+    AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+    AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session'
+    AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
+    _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-}
+  volumes:
+    - ./airflow/dags:/opt/airflow/dags
+    - ./airflow/logs:/opt/airflow/logs
+    - ./airflow/plugins:/opt/airflow/plugins
+  user: "${AIRFLOW_UID:-50000}:0"
+  depends_on:
+    airflow-postgres:
+      condition: service_healthy
+  networks:
+    - datamesh-network
+
+services:
+  # ===========================================
+  # MariaDB - Local Database for Testing
+  # ===========================================
+  mariadb:
+    image: mariadb:10.11
+    container_name: datamesh-mariadb
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: datamesh
+      MYSQL_USER: datamesh
+      MYSQL_PASSWORD: datamesh123
+    ports:
+      - "3306:3306"
+    volumes:
+      - mariadb-data:/var/lib/mysql
+      - ./mariadb/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - datamesh-network
+
+  # ===========================================
+  # Trino - Distributed SQL Query Engine
+  # ===========================================
+  trino:
+    image: trinodb/trino:432
+    container_name: datamesh-trino
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./trino/etc:/etc/trino
+      - ./trino/catalog:/etc/trino/catalog
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/v1/info"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - datamesh-network
+
+  # ===========================================
+  # PostgreSQL for Airflow
+  # ===========================================
+  airflow-postgres:
+    image: postgres:15
+    container_name: datamesh-airflow-postgres
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - airflow-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - datamesh-network
+
+  # ===========================================
+  # Airflow Init
+  # ===========================================
+  airflow-init:
+    <<: *airflow-common
+    container_name: datamesh-airflow-init
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        mkdir -p /sources/logs /sources/dags /sources/plugins
+        chown -R "${AIRFLOW_UID:-50000}:0" /sources/{logs,dags,plugins}
+        exec /entrypoint airflow version
+    environment:
+      <<: *airflow-common-env
+      _AIRFLOW_DB_MIGRATE: 'true'
+      _AIRFLOW_WWW_USER_CREATE: 'true'
+      _AIRFLOW_WWW_USER_USERNAME: ${_AIRFLOW_WWW_USER_USERNAME:-admin}
+      _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD:-admin}
+    user: "0:0"
+    volumes:
+      - ./airflow:/sources
+
+  # ===========================================
+  # Airflow Webserver
+  # ===========================================
+  airflow-webserver:
+    <<: *airflow-common
+    container_name: datamesh-airflow-webserver
+    command: webserver
+    ports:
+      - "8081:8080"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: always
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+
+  # ===========================================
+  # Airflow Scheduler
+  # ===========================================
+  airflow-scheduler:
+    <<: *airflow-common
+    container_name: datamesh-airflow-scheduler
+    command: scheduler
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8974/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: always
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+
+  # ===========================================
+  # PostgreSQL for OpenMetadata
+  # ===========================================
+  openmetadata-postgres:
+    image: postgres:15
+    container_name: datamesh-openmetadata-postgres
+    environment:
+      POSTGRES_USER: openmetadata
+      POSTGRES_PASSWORD: openmetadata
+      POSTGRES_DB: openmetadata
+    volumes:
+      - openmetadata-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "openmetadata"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - datamesh-network
+
+  # ===========================================
+  # Elasticsearch for OpenMetadata
+  # ===========================================
+  openmetadata-elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.10.2
+    container_name: datamesh-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q '\"status\":\"green\"\\|\"status\":\"yellow\"'"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+    networks:
+      - datamesh-network
+
+  # ===========================================
+  # OpenMetadata Server
+  # ===========================================
+  openmetadata:
+    image: docker.getcollate.io/openmetadata/server:1.3.1
+    container_name: datamesh-openmetadata
+    environment:
+      OPENMETADATA_CLUSTER_NAME: openmetadata
+      SERVER_HOST_API_URL: http://localhost:8585/api
+      SERVER_ADMIN_PORT: 8586
+      SERVER_PORT: 8585
+      # Database Configuration
+      DB_DRIVER_CLASS: org.postgresql.Driver
+      DB_SCHEME: postgresql
+      DB_HOST: openmetadata-postgres
+      DB_PORT: 5432
+      DB_USER: openmetadata
+      DB_USER_PASSWORD: openmetadata
+      OM_DATABASE: openmetadata
+      # Elasticsearch Configuration
+      ELASTICSEARCH_HOST: openmetadata-elasticsearch
+      ELASTICSEARCH_PORT: 9200
+      ELASTICSEARCH_SCHEME: http
+      # Airflow Configuration
+      PIPELINE_SERVICE_CLIENT_ENDPOINT: http://airflow-webserver:8080
+      PIPELINE_SERVICE_CLIENT_AUTH_PROVIDER: openmetadata
+      AIRFLOW_USERNAME: admin
+      AIRFLOW_PASSWORD: admin
+      # JWT Configuration
+      RSA_PUBLIC_KEY_FILE_PATH: ./conf/public_key.der
+      RSA_PRIVATE_KEY_FILE_PATH: ./conf/private_key.der
+      JWT_ISSUER: open-metadata.org
+      JWT_KEY_ID: Gb389a-9f76-gdjs-a92j-0242bk94356
+      # Log Level
+      LOG_LEVEL: INFO
+    ports:
+      - "8585:8585"
+      - "8586:8586"
+    depends_on:
+      openmetadata-postgres:
+        condition: service_healthy
+      openmetadata-elasticsearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8585/healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - datamesh-network
+
+volumes:
+  mariadb-data:
+  airflow-postgres-data:
+  openmetadata-postgres-data:
+  elasticsearch-data:
+
+networks:
+  datamesh-network:
+    name: datamesh-network
+    driver: bridge
+
