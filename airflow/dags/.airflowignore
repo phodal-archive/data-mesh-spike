@@ -1,0 +1,15 @@
+# 忽略这些目录和文件，避免 Airflow 扫描
+# 使用正则表达式语法
+venv/
+\.venv/
+__pycache__/
+tests/
+.*\.pyc$
+.*\.pyo$
+\.pytest_cache/
+htmlcov/
+\.coverage
+\.git/
+logs/
+.*\.log$
+

@@ -1,0 +1,15 @@
+# requirements-dev.txt
+# 开发环境额外依赖
+
+-r requirements.txt
+
+# 开发工具
+ipython==8.19.0
+jupyter==1.0.0
+
+# 调试工具
+pdbpp==0.10.3
+
+# 文档生成
+sphinx==7.2.6
+

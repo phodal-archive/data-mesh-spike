@@ -1,0 +1,26 @@
+# Airflow DAGs 依赖包
+# 用于本地开发和测试
+
+# Airflow 核心
+apache-airflow==2.7.3
+apache-airflow-providers-common-sql==1.7.2
+
+# 数据库连接器
+mysql-connector-python==8.0.29
+pymysql==1.1.0
+
+# 测试框架
+pytest==7.4.3
+pytest-cov==4.1.0
+pytest-mock==3.12.0
+
+# 代码质量
+pylint==3.0.3
+black==23.12.1
+flake8==7.0.0
+mypy==1.8.0
+
+# 工具库
+python-dotenv==1.0.0
+pyyaml==6.0.1
+

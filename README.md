@@ -94,6 +94,22 @@ pkill -f 'ssh.*colima.*-L'
 - 将表结构、列信息导入 OpenMetadata
 - 可在 http://localhost:8585 查看数据目录
 
+## 数据质量验证
+
+Data Mesh MVP 包含完整的数据质量检查管道，在每次数据刷新前验证质量：
+
+```bash
+# 查看最新的质量检查结果
+./scripts/view-quality-logs.sh
+```
+
+质量规则包括：
+- **完整性检查**: 主键非空、参照完整性、业务规则
+- **一致性检查**: 跨表金额匹配、外键有效性
+- **新鲜度检查**: 数据更新时效性
+
+详细演示文档：[docs/task-c-data-quality-validation.md](docs/task-c-data-quality-validation.md)
+
 ## 跨域查询示例 (Trino)
 
 ```sql
