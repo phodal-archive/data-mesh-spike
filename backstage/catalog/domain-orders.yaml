@@ -1,0 +1,78 @@
+# Orders Domain - Data Product Definition
+---
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  name: orders-domain
+  description: 订单域 - 管理订单交易数据
+  tags:
+    - data-mesh
+    - domain
+    - orders
+  links:
+    - url: http://localhost:8585
+      title: OpenMetadata
+      icon: catalog
+spec:
+  owner: orders-team
+  domain: orders
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: orders-data-product
+  description: |
+    订单交易数据产品
+    
+    ## 数据契约
+    - 表: orders, order_items
+    - 主键: order_id, item_id
+    - 更新频率: 实时
+    
+    ## 依赖
+    - 客户域 (customer_id)
+    - 产品域 (product_id)
+  tags:
+    - data-product
+    - transactional
+spec:
+  type: data-product
+  lifecycle: production
+  owner: orders-team
+  system: orders-domain
+  dependsOn:
+    - component:customers-data-product
+    - component:products-data-product
+  providesApis:
+    - orders-api
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: orders-api
+  description: 订单数据 SQL API
+  tags:
+    - sql
+    - trino
+spec:
+  type: sql
+  lifecycle: production
+  owner: orders-team
+  system: orders-domain
+  definition: |
+    -- 订单数据查询
+    SELECT 
+      o.order_id,
+      o.customer_id,
+      o.order_date,
+      o.status,
+      o.total_amount,
+      oi.product_id,
+      oi.quantity,
+      oi.unit_price
+    FROM mariadb.domain_orders.orders o
+    JOIN mariadb.domain_orders.order_items oi 
+      ON o.order_id = oi.order_id
+

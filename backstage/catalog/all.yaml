@@ -1,0 +1,16 @@
+# Backstage Catalog - Data Mesh Data Products
+# This file defines all data products and their relationships
+
+apiVersion: backstage.io/v1alpha1
+kind: Location
+metadata:
+  name: datamesh-catalog
+  description: Data Mesh MVP Catalog
+spec:
+  targets:
+    - ./domain-customers.yaml
+    - ./domain-orders.yaml
+    - ./domain-products.yaml
+    - ./domain-analytics.yaml
+    - ./platform-components.yaml
+

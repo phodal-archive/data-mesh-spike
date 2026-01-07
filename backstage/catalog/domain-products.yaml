@@ -1,0 +1,61 @@
+# Products Domain - Data Product Definition
+---
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  name: products-domain
+  description: 产品域 - 管理产品目录数据
+  tags:
+    - data-mesh
+    - domain
+    - products
+spec:
+  owner: products-team
+  domain: products
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: products-data-product
+  description: |
+    产品目录数据产品
+    
+    ## 数据契约
+    - 表: products, categories
+    - 主键: product_id, category_id
+    - 更新频率: 每日
+  tags:
+    - data-product
+    - master-data
+spec:
+  type: data-product
+  lifecycle: production
+  owner: products-team
+  system: products-domain
+  providesApis:
+    - products-api
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: products-api
+  description: 产品数据 SQL API
+spec:
+  type: sql
+  lifecycle: production
+  owner: products-team
+  system: products-domain
+  definition: |
+    SELECT 
+      p.product_id,
+      p.name,
+      p.description,
+      p.price,
+      p.category,
+      c.name as category_name
+    FROM mariadb.domain_products.products p
+    LEFT JOIN mariadb.domain_products.categories c 
+      ON p.category = c.name
+

@@ -1,0 +1,90 @@
+# Data Mesh Platform Components
+---
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  name: datamesh-platform
+  description: Data Mesh 自服务平台
+  tags:
+    - platform
+    - data-mesh
+spec:
+  owner: platform-team
+  domain: platform
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: trino-query-engine
+  description: Trino 联邦查询引擎 - 跨域数据查询
+  tags:
+    - platform
+    - query-engine
+  links:
+    - url: http://localhost:8080
+      title: Trino UI
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-team
+  system: datamesh-platform
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: openmetadata-catalog
+  description: OpenMetadata 数据目录 - 元数据管理与数据发现
+  tags:
+    - platform
+    - data-catalog
+  links:
+    - url: http://localhost:8585
+      title: OpenMetadata UI
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-team
+  system: datamesh-platform
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: airflow-orchestrator
+  description: Apache Airflow - 数据管道编排
+  tags:
+    - platform
+    - orchestration
+  links:
+    - url: http://localhost:8081
+      title: Airflow UI
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-team
+  system: datamesh-platform
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: observability-stack
+  description: 可观测性栈 - Grafana, Prometheus, Jaeger
+  tags:
+    - platform
+    - observability
+  links:
+    - url: http://localhost:3000
+      title: Grafana
+    - url: http://localhost:9090
+      title: Prometheus
+    - url: http://localhost:16686
+      title: Jaeger
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-team
+  system: datamesh-platform
+

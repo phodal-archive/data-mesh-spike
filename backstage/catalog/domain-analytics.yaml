@@ -1,0 +1,74 @@
+# Analytics Domain - Data Product Definition
+---
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  name: analytics-domain
+  description: 分析域 - 聚合分析数据产品
+  tags:
+    - data-mesh
+    - domain
+    - analytics
+spec:
+  owner: analytics-team
+  domain: analytics
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: sales-analytics-data-product
+  description: |
+    销售分析数据产品
+    
+    ## 数据契约
+    - 聚合订单、客户、产品数据
+    - 提供销售洞察
+    - 更新频率: 每小时
+    
+    ## 消费者
+    - BI 团队
+    - 管理层报表
+  tags:
+    - data-product
+    - analytics
+    - aggregated
+spec:
+  type: data-product
+  lifecycle: production
+  owner: analytics-team
+  system: analytics-domain
+  dependsOn:
+    - component:customers-data-product
+    - component:orders-data-product
+    - component:products-data-product
+  providesApis:
+    - sales-analytics-api
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: sales-analytics-api
+  description: 销售分析 SQL API
+spec:
+  type: sql
+  lifecycle: production
+  owner: analytics-team
+  system: analytics-domain
+  definition: |
+    -- 销售分析视图 - 跨域联邦查询
+    SELECT 
+      c.first_name || ' ' || c.last_name as customer_name,
+      p.name as product_name,
+      p.category,
+      o.order_date,
+      o.status,
+      oi.quantity,
+      oi.unit_price,
+      oi.quantity * oi.unit_price as line_total
+    FROM mariadb.domain_orders.orders o
+    JOIN mariadb.domain_orders.order_items oi ON o.order_id = oi.order_id
+    JOIN mariadb.domain_customers.customers c ON o.customer_id = c.customer_id
+    JOIN mariadb.domain_products.products p ON oi.product_id = p.product_id
+

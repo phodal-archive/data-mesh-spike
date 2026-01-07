@@ -1,0 +1,86 @@
+# Customer Domain - Data Product Definition
+---
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  name: customer-domain
+  description: 客户域 - 管理客户主数据
+  annotations:
+    backstage.io/techdocs-ref: dir:.
+  tags:
+    - data-mesh
+    - domain
+    - customers
+  links:
+    - url: http://localhost:8585/table/datamesh-mariadb.domain_customers.customers
+      title: OpenMetadata
+      icon: catalog
+spec:
+  owner: customer-team
+  domain: customers
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: customers-data-product
+  description: |
+    客户主数据产品 - 提供客户基本信息
+    
+    ## 数据契约
+    - 表: customers
+    - 主键: customer_id
+    - 更新频率: 实时
+    
+    ## SLA
+    - 可用性: 99.9%
+    - 数据新鲜度: < 1分钟
+  annotations:
+    backstage.io/techdocs-ref: dir:.
+  tags:
+    - data-product
+    - pii
+    - master-data
+  links:
+    - url: http://localhost:8080
+      title: Trino Query
+      icon: search
+    - url: http://localhost:8585
+      title: Data Catalog
+      icon: catalog
+spec:
+  type: data-product
+  lifecycle: production
+  owner: customer-team
+  system: customer-domain
+  providesApis:
+    - customers-api
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: customers-api
+  description: 客户数据 SQL API
+  tags:
+    - sql
+    - trino
+spec:
+  type: sql
+  lifecycle: production
+  owner: customer-team
+  system: customer-domain
+  definition: |
+    -- 通过 Trino 查询客户数据
+    -- Catalog: mariadb
+    -- Schema: domain_customers
+    
+    SELECT 
+      customer_id,
+      email,
+      first_name,
+      last_name,
+      created_at,
+      updated_at
+    FROM mariadb.domain_customers.customers
+

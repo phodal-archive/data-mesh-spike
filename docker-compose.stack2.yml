@@ -135,6 +135,11 @@ services:
       APP_CONFIG_backend_database_connection_port: 5432
       APP_CONFIG_backend_database_connection_user: backstage
       APP_CONFIG_backend_database_connection_password: backstage
+      # Data Mesh Catalog Configuration
+      APP_CONFIG_catalog_locations_0_type: file
+      APP_CONFIG_catalog_locations_0_target: /app/catalog/all.yaml
+    volumes:
+      - ./backstage/catalog:/app/catalog:ro
     ports:
       - "7007:7007"
     depends_on:

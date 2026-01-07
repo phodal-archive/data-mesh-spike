@@ -218,6 +218,8 @@ services:
       DB_USER: openmetadata
       DB_USER_PASSWORD: openmetadata
       OM_DATABASE: openmetadata
+      # OpenSearch Configuration
+      SEARCH_TYPE: opensearch
       ELASTICSEARCH_HOST: openmetadata-elasticsearch
       ELASTICSEARCH_PORT: 9200
       ELASTICSEARCH_SCHEME: http
@@ -245,7 +247,8 @@ services:
       DB_USER: openmetadata
       DB_USER_PASSWORD: openmetadata
       OM_DATABASE: openmetadata
-      # Elasticsearch Configuration
+      # OpenSearch Configuration (not Elasticsearch)
+      SEARCH_TYPE: opensearch
       ELASTICSEARCH_HOST: openmetadata-elasticsearch
       ELASTICSEARCH_PORT: 9200
       ELASTICSEARCH_SCHEME: http
