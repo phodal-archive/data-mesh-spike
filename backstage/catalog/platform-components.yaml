@@ -88,3 +88,26 @@ spec:
   owner: platform-team
   system: datamesh-platform
 
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: superset-bi
+  description: Apache Superset - 自助式 BI 报表工具
+  tags:
+    - platform
+    - bi
+    - analytics
+  links:
+    - url: http://localhost:8088
+      title: Superset UI
+    - url: http://localhost:8088/dashboard/list/
+      title: Dashboards
+spec:
+  type: service
+  lifecycle: production
+  owner: analytics-team
+  system: datamesh-platform
+  dependsOn:
+    - component:trino-query-engine
+

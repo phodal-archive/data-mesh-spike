@@ -41,6 +41,7 @@ check_service() {
 check_service "OpenMetadata" "http://localhost:8585/healthcheck"
 check_service "Airflow" "http://localhost:8081/health"
 check_service "Trino" "http://localhost:8080/v1/info"
+check_service "Superset" "http://localhost:8088/health"
 check_service "Backstage" "http://localhost:7007/healthcheck"
 check_service "Grafana" "http://localhost:3000/api/health"
 check_service "Prometheus" "http://localhost:9090/-/healthy"
