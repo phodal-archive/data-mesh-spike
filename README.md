@@ -74,7 +74,7 @@ pkill -f 'ssh.*colima.*-L'
 | OpenMetadata | 8585 | 数据目录 | admin/admin |
 | Trino | 8080 | 联邦查询 | - |
 | Airflow | 8081 | 数据编排 | admin/admin |
-| **Superset** | **8088** | **BI 报表** | **admin/admin** |
+| **Superset** | **8089** | **BI 报表** | **admin/admin** |
 | Backstage | 7007 | 开发者门户 | - |
 | Grafana | 3000 | 运维监控 | admin/admin |
 | Prometheus | 9090 | 指标存储 | - |
@@ -121,9 +121,9 @@ Data Mesh MVP 包含完整的数据质量检查管道，在每次数据刷新前
 
 启动服务后，可以通过 Superset 创建业务报表：
 
-1. 访问 http://localhost:8088 (admin/admin)
+1. 访问 http://localhost:8089 (admin/admin)
 2. 添加 Trino 数据源：
-   - Database → + Database → Trino
+   - Settings → Database Connections → + Database → Trino
    - SQLAlchemy URI: `trino://trino@datamesh-trino:8080/mariadb`
 3. 创建数据集和图表，例如：
    - 客户 360 视图: `SELECT * FROM domain_analytics.dp_customer_360`

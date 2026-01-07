@@ -163,29 +163,31 @@ services:
   superset:
     image: apache/superset:3.1.0
     container_name: datamesh-superset
+    command: >
+      bash -c "
+        pip install trino &&
+        /usr/bin/run-server.sh
+      "
     environment:
-      - SUPERSET_SECRET_KEY=your-secret-key-change-me-in-production
-      - DATABASE_DB=superset
-      - DATABASE_HOST=superset-postgres
-      - DATABASE_PASSWORD=superset
-      - DATABASE_USER=superset
-      - DATABASE_PORT=5432
-      - DATABASE_DIALECT=postgresql
-      - REDIS_HOST=superset-redis
-      - REDIS_PORT=6379
+      - SUPERSET_SECRET_KEY=datamesh-mvp-secret-key-change-in-prod
+      - SUPERSET_CONFIG_PATH=/app/pythonpath/superset_config.py
+    volumes:
+      - ./superset/superset_config.py:/app/pythonpath/superset_config.py:ro
     ports:
-      - "8088:8088"
+      - "8089:8088"
     depends_on:
       superset-postgres:
         condition: service_healthy
       superset-redis:
         condition: service_healthy
+      superset-init:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8088/health"]
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 60s
+      start_period: 120s
     networks:
       - datamesh-network
 
@@ -211,20 +213,22 @@ services:
     container_name: datamesh-superset-init
     command: >
       bash -c "
+        pip install trino &&
         superset db upgrade &&
-        superset fab create-admin --username admin --firstname Admin --lastname User --email admin@example.com --password admin &&
-        superset init
+        superset fab create-admin --username admin --firstname Admin --lastname User --email admin@example.com --password admin || true &&
+        superset init &&
+        superset import-datasources -p /app/datasources/trino.yaml || true
       "
     environment:
-      - SUPERSET_SECRET_KEY=your-secret-key-change-me-in-production
-      - DATABASE_DB=superset
-      - DATABASE_HOST=superset-postgres
-      - DATABASE_PASSWORD=superset
-      - DATABASE_USER=superset
-      - DATABASE_PORT=5432
-      - DATABASE_DIALECT=postgresql
+      - SUPERSET_SECRET_KEY=datamesh-mvp-secret-key-change-in-prod
+      - SUPERSET_CONFIG_PATH=/app/pythonpath/superset_config.py
+    volumes:
+      - ./superset/superset_config.py:/app/pythonpath/superset_config.py:ro
+      - ./superset/datasources:/app/datasources:ro
     depends_on:
       superset-postgres:
+        condition: service_healthy
+      superset-redis:
         condition: service_healthy
     networks:
       - datamesh-network
