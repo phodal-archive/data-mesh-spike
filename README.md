@@ -81,6 +81,19 @@ pkill -f 'ssh.*colima.*-L'
 - **domain_products**: 产品目录数据
 - **domain_analytics**: 聚合分析数据
 
+## OpenMetadata 元数据采集
+
+启动服务后，运行以下命令采集 MariaDB 的元数据到 OpenMetadata：
+
+```bash
+./scripts/run-ingestion.sh
+```
+
+这将自动：
+- 扫描所有数据域 (domain_customers, domain_orders, domain_products, domain_analytics)
+- 将表结构、列信息导入 OpenMetadata
+- 可在 http://localhost:8585 查看数据目录
+
 ## 跨域查询示例 (Trino)
 
 ```sql

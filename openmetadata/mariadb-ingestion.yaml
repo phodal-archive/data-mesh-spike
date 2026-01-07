@@ -1,0 +1,36 @@
+# OpenMetadata Ingestion Configuration for MariaDB - All Schemas
+source:
+  type: mysql
+  serviceName: datamesh-mariadb
+  serviceConnection:
+    config:
+      type: Mysql
+      username: datamesh
+      authType:
+        password: datamesh123
+      hostPort: datamesh-mariadb:3306
+  sourceConfig:
+    config:
+      type: DatabaseMetadata
+      markDeletedTables: true
+      includeTables: true
+      includeViews: true
+      databaseFilterPattern:
+        includes:
+          - domain_customers
+          - domain_orders
+          - domain_products
+          - domain_analytics
+          - datamesh
+
+sink:
+  type: metadata-rest
+  config: {}
+
+workflowConfig:
+  loggerLevel: INFO
+  openMetadataServerConfig:
+    hostPort: http://datamesh-openmetadata:8585/api
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJvcGVuLW1ldGFkYXRhLm9yZyIsInN1YiI6ImluZ2VzdGlvbi1ib3QiLCJlbWFpbCI6ImluZ2VzdGlvbi1ib3RAb3Blbm1ldGFkYXRhLm9yZyIsImlzQm90Ijp0cnVlLCJ0b2tlblR5cGUiOiJCT1QiLCJpYXQiOjE3Njc3MTQ2NDUsImV4cCI6bnVsbH0.VPP66EO5fBvFZdUiEULKTkKLBt0irzJP_mraAXGaLBUfLV13XGg-b7YbrUoq8eTeIuRgvN6ZrAzKMetMmedRC76g5SrOoXZ4qy_g8THrOJl5G2ZQBtuLtKNi9Iz8n_5_jMhilm3WJnKraILG3nxUhkGOYlf-ZYGPti7og0zGicUN52gyUQAm04sJdTRqYwEePuHx0VVJJnNSE8M7ft-Pf0V2EbXDKiwAevu72JaE2AjeWuvuZWTwNKrY07S1PDIbvGj03LGED1-jTscUyNmQ7zunZfSyqDsdyPWUj5k4GsLYOi3R15s0wyhaRcD_M7-NXv50L4RoyzTHHAbjbbKC3Q"
