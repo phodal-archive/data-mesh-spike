@@ -121,25 +121,17 @@ services:
   # Backstage - Developer Portal
   # ===========================================
   backstage:
-    image: roadiehq/community-backstage-image:latest
+    image: ghcr.io/backstage/backstage:latest
     container_name: datamesh-backstage
+    platform: linux/arm64
     environment:
       POSTGRES_HOST: backstage-postgres
-      POSTGRES_PORT: 5432
+      POSTGRES_PORT: "5432"
       POSTGRES_USER: backstage
       POSTGRES_PASSWORD: backstage
-      APP_CONFIG_app_baseUrl: http://localhost:7007
-      APP_CONFIG_backend_baseUrl: http://localhost:7007
-      APP_CONFIG_backend_database_client: pg
-      APP_CONFIG_backend_database_connection_host: backstage-postgres
-      APP_CONFIG_backend_database_connection_port: 5432
-      APP_CONFIG_backend_database_connection_user: backstage
-      APP_CONFIG_backend_database_connection_password: backstage
-      # Data Mesh Catalog Configuration
-      APP_CONFIG_catalog_locations_0_type: file
-      APP_CONFIG_catalog_locations_0_target: /app/catalog/all.yaml
     volumes:
       - ./backstage/catalog:/app/catalog:ro
+      - ./backstage/app-config.yaml:/app/app-config.production.yaml:ro
     ports:
       - "7007:7007"
     depends_on:
@@ -149,8 +141,8 @@ services:
       test: ["CMD", "curl", "-f", "http://localhost:7007/healthcheck"]
       interval: 30s
       timeout: 10s
-      retries: 5
-      start_period: 60s
+      retries: 10
+      start_period: 120s
     networks:
       - datamesh-network
 

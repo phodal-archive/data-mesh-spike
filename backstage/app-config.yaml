@@ -1,0 +1,83 @@
+app:
+  title: Data Mesh Portal
+  baseUrl: http://localhost:7007
+
+organization:
+  name: Data Mesh MVP
+
+backend:
+  baseUrl: http://localhost:7007
+  listen:
+    port: 7007
+  csp:
+    connect-src: ["'self'", 'http:', 'https:']
+  cors:
+    origin: http://localhost:7007
+    methods: [GET, HEAD, PATCH, POST, PUT, DELETE]
+    credentials: true
+  database:
+    client: pg
+    connection:
+      host: ${POSTGRES_HOST}
+      port: ${POSTGRES_PORT}
+      user: ${POSTGRES_USER}
+      password: ${POSTGRES_PASSWORD}
+
+integrations: {}
+
+techdocs:
+  builder: 'local'
+  generator:
+    runIn: 'local'
+  publisher:
+    type: 'local'
+
+auth:
+  providers:
+    guest:
+      dangerouslyAllowOutsideDevelopment: true
+
+catalog:
+  import:
+    entityFilename: catalog-info.yaml
+    pullRequestBranchName: backstage-integration
+  rules:
+    - allow: [Component, System, API, Resource, Location, Domain, Group, User]
+  locations:
+    # Data Mesh Domains
+    - type: file
+      target: /app/catalog/all.yaml
+      rules:
+        - allow: [Location, Component, System, API, Domain, Group, User]
+    - type: file
+      target: /app/catalog/domain-customers.yaml
+      rules:
+        - allow: [Component, System, API, Domain]
+    - type: file
+      target: /app/catalog/domain-orders.yaml
+      rules:
+        - allow: [Component, System, API, Domain]
+    - type: file
+      target: /app/catalog/domain-products.yaml
+      rules:
+        - allow: [Component, System, API, Domain]
+    - type: file
+      target: /app/catalog/domain-analytics.yaml
+      rules:
+        - allow: [Component, System, API, Domain]
+    - type: file
+      target: /app/catalog/platform-components.yaml
+      rules:
+        - allow: [Component, System, Resource]
+    # Backstage default examples
+    - type: file
+      target: ./examples/entities.yaml
+    - type: file
+      target: ./examples/template/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: ./examples/org.yaml
+      rules:
+        - allow: [User, Group]
+
