@@ -99,9 +99,9 @@ metadata:
     - bi
     - analytics
   links:
-    - url: http://localhost:8088
+    - url: http://localhost:8089
       title: Superset UI
-    - url: http://localhost:8088/dashboard/list/
+    - url: http://localhost:8089/dashboard/list/
       title: Dashboards
 spec:
   type: service
@@ -111,3 +111,26 @@ spec:
   dependsOn:
     - component:trino-query-engine
 
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: neo4j-knowledge-graph
+  description: Neo4j 知识图谱 - 领域概念与关系可视化
+  tags:
+    - platform
+    - knowledge-graph
+    - visualization
+  annotations:
+    backstage.io/techdocs-ref: dir:.
+  links:
+    - url: http://localhost:7474
+      title: Neo4j Browser
+      icon: dashboard
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-team
+  system: datamesh-platform
+  providesApis:
+    - neo4j-bolt-api

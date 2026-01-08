@@ -233,11 +233,40 @@ services:
     networks:
       - datamesh-network
 
+  # ===========================================
+  # Neo4j - Domain Knowledge Graph
+  # ===========================================
+  neo4j:
+    image: neo4j:5.15-community
+    container_name: datamesh-neo4j
+    environment:
+      - NEO4J_AUTH=neo4j/datamesh123
+      - NEO4J_PLUGINS=["apoc"]
+      - NEO4J_dbms_security_procedures_unrestricted=apoc.*
+      - NEO4J_dbms_security_procedures_allowlist=apoc.*
+    volumes:
+      - neo4j-data:/data
+      - neo4j-logs:/logs
+      - ./neo4j/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "7474:7474"   # HTTP (Browser)
+      - "7687:7687"   # Bolt
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:7474"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - datamesh-network
+
 volumes:
   prometheus-data:
   grafana-data:
   backstage-postgres-data:
   superset-postgres-data:
+  neo4j-data:
+  neo4j-logs:
 
 networks:
   datamesh-network:
