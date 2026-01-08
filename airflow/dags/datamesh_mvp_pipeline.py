@@ -10,10 +10,11 @@ Data Mesh MVP Pipeline
 from datetime import datetime, timedelta
 from airflow import DAG
 from airflow.operators.python import PythonOperator
-from airflow.operators.bash import BashOperator
-from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator
 import mysql.connector
 from airflow.exceptions import AirflowException
+import os
+import urllib.request
+import urllib.error
 
 # DAG 默认参数
 default_args = {
@@ -220,6 +221,16 @@ def validate_data_quality(**context):
         'failed': failed_checks,
         'pass_rate': len(passed_checks) / (len(passed_checks) + len(failed_checks)) * 100
     }
+
+    # Best-effort: push quality summary to Prometheus Pushgateway (for Grafana trends)
+    total_checks = len(passed_checks) + len(failed_checks)
+    _push_quality_metrics(
+        {
+            "datamesh_quality_pass_rate": quality_result["pass_rate"],
+            "datamesh_quality_failed_checks": len(failed_checks),
+            "datamesh_quality_total_checks": total_checks,
+        }
+    )
     
     # 如果有失败的关键检查，抛出异常阻止管道继续
     critical_failures = [f for f in failed_checks if '订单总额' in f or '主键' in f]
@@ -253,6 +264,113 @@ def generate_kpi_report(**context):
     return kpis
 
 
+def _read_sql_statements(sql_path: str) -> list[str]:
+    """Very small SQL loader for .sql files with '--' comments and ';' terminators."""
+    with open(sql_path, "r", encoding="utf-8") as f:
+        lines = f.readlines()
+
+    statements: list[str] = []
+    buf: list[str] = []
+
+    for raw in lines:
+        line = raw.strip()
+        if not line:
+            continue
+        if line.startswith("--"):
+            continue
+        # Keep original raw (preserve spacing) for view definitions readability
+        buf.append(raw)
+        if ";" in raw:
+            joined = "".join(buf).strip()
+            # Split in case there are multiple statements on one line
+            parts = joined.split(";")
+            for part in parts[:-1]:
+                stmt = part.strip()
+                if stmt:
+                    statements.append(stmt)
+            # Remaining part (if any) continues buffer
+            remainder = parts[-1].strip()
+            buf = [remainder + "\n"] if remainder else []
+
+    tail = "".join(buf).strip()
+    if tail:
+        statements.append(tail)
+
+    return statements
+
+
+def refresh_data_products_views(**context):
+    """
+    Create/refresh Data Products (dp_*) views in MariaDB.
+    This makes the MVP deterministic: dp_* exists without manual SQL steps.
+    """
+    print("=" * 60)
+    print("🧩 Refreshing Data Products (dp_*)")
+    print("=" * 60)
+
+    dag_dir = os.path.dirname(os.path.abspath(__file__))
+    sql_path = os.path.join(dag_dir, "sql", "03-data-products.sql")
+    if not os.path.exists(sql_path):
+        raise AirflowException(f"Data Products SQL not found: {sql_path}")
+
+    statements = _read_sql_statements(sql_path)
+    if not statements:
+        raise AirflowException(f"No SQL statements parsed from: {sql_path}")
+
+    conn = mysql.connector.connect(
+        host='datamesh-mariadb',
+        user='datamesh',
+        password='datamesh123',
+        database='domain_analytics',
+        autocommit=True,
+    )
+    cursor = conn.cursor()
+
+    current_db = "domain_analytics"
+    applied = 0
+    try:
+        for stmt in statements:
+            upper = stmt.strip().upper()
+            if upper.startswith("USE "):
+                db = stmt.split(None, 1)[1].strip()
+                cursor.execute(f"USE {db}")
+                current_db = db
+                print(f"→ Using database: {current_db}")
+                continue
+
+            cursor.execute(stmt)
+            applied += 1
+        print(f"✅ Applied {applied} SQL statements from {sql_path}")
+    finally:
+        cursor.close()
+        conn.close()
+
+    return {"applied_statements": applied, "sql_path": sql_path}
+
+
+def _push_quality_metrics(metrics: dict) -> None:
+    """Push quality metrics to Prometheus Pushgateway (best-effort)."""
+    endpoint = os.environ.get("PUSHGATEWAY_URL", "http://pushgateway:9091")
+    job = "datamesh_mvp_pipeline"
+    url = f"{endpoint}/metrics/job/{job}"
+
+    lines = []
+    for k, v in metrics.items():
+        # Prometheus metric name safety
+        name = k.strip()
+        lines.append(f"{name} {v}")
+    body = ("\n".join(lines) + "\n").encode("utf-8")
+
+    req = urllib.request.Request(url, data=body, method="PUT")
+    req.add_header("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
+    try:
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            print(f"📤 Pushed quality metrics to Pushgateway: HTTP {resp.status}")
+    except (urllib.error.URLError, urllib.error.HTTPError) as e:
+        # Don't fail the pipeline just because monitoring is down in MVP
+        print(f"⚠️  Failed to push metrics to Pushgateway ({url}): {e}")
+
+
 def notify_data_products_ready(**context):
     """通知数据产品已就绪"""
     print("=" * 50)
@@ -278,15 +396,10 @@ validate_quality = PythonOperator(
     dag=dag,
 )
 
-# 使用 Bash 执行 Trino 查询刷新数据产品
-refresh_data_products = BashOperator(
+# 创建/刷新数据产品（dp_*）
+refresh_data_products_task = PythonOperator(
     task_id='refresh_data_products',
-    bash_command='''
-    echo "Refreshing data products via Trino..."
-    echo "Querying: mariadb.domain_analytics.dp_customer_360"
-    echo "Querying: mariadb.domain_analytics.dp_product_sales"
-    echo "Data products refreshed successfully!"
-    ''',
+    python_callable=refresh_data_products_views,
     dag=dag,
 )
 
@@ -303,5 +416,5 @@ notify_ready = PythonOperator(
 )
 
 # 定义任务依赖关系
-start_task >> validate_quality >> refresh_data_products >> generate_report >> notify_ready
+start_task >> validate_quality >> refresh_data_products_task >> generate_report >> notify_ready
 

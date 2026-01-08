@@ -37,6 +37,14 @@ scrape_configs:
           component: 'visualization'
     metrics_path: /metrics
 
+  # Pushgateway (for batch/job metrics like Airflow quality checks)
+  - job_name: 'pushgateway'
+    honor_labels: true
+    static_configs:
+      - targets: ['pushgateway:9091']
+        labels:
+          component: 'job-metrics'
+
   # ------------------------------------------------------------
   # Service probes (HTTP 2xx) via Blackbox Exporter
   # Use this for services that do not expose Prometheus metrics.

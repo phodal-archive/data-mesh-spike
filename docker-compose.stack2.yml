@@ -25,6 +25,22 @@ services:
       - datamesh-network
 
   # ===========================================
+  # Pushgateway - Push short-lived job metrics (e.g., data quality checks)
+  # ===========================================
+  pushgateway:
+    image: prom/pushgateway:v1.8.0
+    container_name: datamesh-pushgateway
+    ports:
+      - "9091:9091"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9091/-/healthy"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - datamesh-network
+
+  # ===========================================
   # OpenTelemetry Collector
   # ===========================================
   otel-collector:

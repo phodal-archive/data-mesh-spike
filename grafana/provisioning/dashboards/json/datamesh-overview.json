@@ -67,6 +67,56 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 80 },
+              { "color": "green", "value": 95 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 12, "x": 0, "y": 16 },
+      "id": 7,
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "orientation": "auto", "textMode": "auto" },
+      "pluginVersion": "10.2.2",
+      "targets": [{ "expr": "datamesh_quality_pass_rate", "refId": "A" }],
+      "title": "Data Quality Pass Rate (last)",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 12, "x": 12, "y": 16 },
+      "id": 8,
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "orientation": "auto", "textMode": "auto" },
+      "pluginVersion": "10.2.2",
+      "targets": [{ "expr": "datamesh_quality_failed_checks", "refId": "A" }],
+      "title": "Data Quality Failed Checks (last)",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "description": "Data Mesh 平台组件健康状态",
       "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "custom": { "axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0, "drawStyle": "line", "fillOpacity": 10, "gradientMode": "none", "hideFrom": { "legend": false, "tooltip": false, "viz": false }, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5, "scaleDistribution": { "type": "linear" }, "showPoints": "auto", "spanNulls": false, "stacking": { "group": "A", "mode": "none" }, "thresholdsStyle": { "mode": "off" } }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] } }, "overrides": [] },
       "gridPos": { "h": 8, "w": 24, "x": 0, "y": 4 },
@@ -77,7 +127,7 @@
       "type": "timeseries"
     },
     {
-      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 12 },
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 20 },
       "id": 6,
       "options": { "code": { "language": "plaintext", "showLineNumbers": false, "showMiniMap": false }, "content": "# Data Mesh MVP 架构\n\n## 数据域\n- **客户域** (domain_customers): 客户主数据\n- **订单域** (domain_orders): 订单交易数据  \n- **产品域** (domain_products): 产品目录数据\n- **分析域** (domain_analytics): 聚合分析数据\n\n## 平台组件\n| 组件 | 用途 | 端口 |\n|------|------|------|\n| Trino | 联邦查询引擎 | 8080 |\n| OpenMetadata | 数据目录 | 8585 |\n| Airflow | 数据编排 | 8081 |\n| Grafana | 可视化监控 | 3000 |\n| Jaeger | 分布式追踪 | 16686 |", "mode": "markdown" },
       "pluginVersion": "10.2.2",
