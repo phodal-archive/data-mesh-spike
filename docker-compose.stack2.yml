@@ -208,6 +208,8 @@ services:
     environment:
       - SUPERSET_SECRET_KEY=datamesh-mvp-secret-key-change-in-prod
       - SUPERSET_CONFIG_PATH=/app/pythonpath/superset_config.py
+      - REDIS_HOST=superset-redis
+      - REDIS_PORT=6379
     volumes:
       - ./superset/superset_config.py:/app/pythonpath/superset_config.py:ro
     ports:
@@ -225,6 +227,31 @@ services:
       timeout: 10s
       retries: 5
       start_period: 120s
+    networks:
+      - datamesh-network
+
+  superset-worker:
+    image: apache/superset:3.1.0
+    container_name: datamesh-superset-worker
+    command: >
+      bash -c "
+        pip install trino &&
+        celery --app=superset.tasks.celery_app:app worker --pool=prefork -O fair -c 2
+      "
+    environment:
+      - SUPERSET_SECRET_KEY=datamesh-mvp-secret-key-change-in-prod
+      - SUPERSET_CONFIG_PATH=/app/pythonpath/superset_config.py
+      - REDIS_HOST=superset-redis
+      - REDIS_PORT=6379
+    volumes:
+      - ./superset/superset_config.py:/app/pythonpath/superset_config.py:ro
+    depends_on:
+      superset-postgres:
+        condition: service_healthy
+      superset-redis:
+        condition: service_healthy
+      superset-init:
+        condition: service_completed_successfully
     networks:
       - datamesh-network
 
