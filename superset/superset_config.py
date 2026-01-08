@@ -48,6 +48,8 @@ ENABLE_SQL_LAB = True
 # Feature flags
 FEATURE_FLAGS = {
     'ENABLE_TEMPLATE_PROCESSING': True,
+    # Keep the MVP simple: run SQL Lab queries synchronously (no async results backend required)
+    'GLOBAL_ASYNC_QUERIES': False,
 }
 
 # Talisman configuration (for HTTPS headers, disabled for local dev)
