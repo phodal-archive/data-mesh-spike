@@ -44,6 +44,8 @@ case "${1:-all}" in
     stack1)
         echo "📦 Starting Stack 1 (Data Catalog & Orchestration)..."
         docker compose -f docker-compose.stack1.yml up -d
+        echo "🧩 Ensuring Data Products (dp_*) views exist..."
+        ./scripts/init-data-products.sh || true
         ;;
     stack2)
         echo "📦 Starting Stack 2 (Developer Portal & Observability)..."
@@ -56,6 +58,8 @@ case "${1:-all}" in
         docker compose -f docker-compose.stack1.yml up -d
         sleep 10  # Wait for network to be created
         docker compose -f docker-compose.stack2.yml up -d
+        echo "🧩 Ensuring Data Products (dp_*) views exist..."
+        ./scripts/init-data-products.sh || true
         ;;
     *)
         echo "Usage: $0 [stack1|stack2|all]"

@@ -5,6 +5,26 @@ version: "3.9"
 
 services:
   # ===========================================
+  # Blackbox Exporter - HTTP/TCP probing for Prometheus
+  # ===========================================
+  blackbox-exporter:
+    image: prom/blackbox-exporter:v0.24.0
+    container_name: datamesh-blackbox-exporter
+    command:
+      - '--config.file=/etc/blackbox/blackbox.yml'
+    volumes:
+      - ./prometheus/blackbox.yml:/etc/blackbox/blackbox.yml:ro
+    ports:
+      - "9115:9115"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9115/-/healthy"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - datamesh-network
+
+  # ===========================================
   # OpenTelemetry Collector
   # ===========================================
   otel-collector:
@@ -89,6 +109,7 @@ services:
     depends_on:
       - prometheus
       - jaeger
+      - blackbox-exporter
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/api/health"]
       interval: 10s

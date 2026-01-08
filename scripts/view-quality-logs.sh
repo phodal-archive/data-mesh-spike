@@ -2,7 +2,9 @@
 
 # 查看最新的 Data Quality Validation 日志
 
-AIRFLOW_LOGS_DIR="/Users/phodal/repractise/learn-data-mesh/airflow/logs/dag_id=datamesh_mvp_pipeline"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+AIRFLOW_LOGS_DIR="$PROJECT_DIR/airflow/logs/dag_id=datamesh_mvp_pipeline"
 
 echo "🔍 Finding latest quality check logs..."
 echo ""

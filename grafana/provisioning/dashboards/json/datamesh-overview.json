@@ -19,7 +19,7 @@
       "id": 1,
       "options": { "colorMode": "value", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
       "pluginVersion": "10.2.2",
-      "targets": [{ "expr": "up{job=\"trino\"}", "refId": "A" }],
+      "targets": [{ "expr": "max(up{job=\"trino\"}) or max(probe_success{job=\"trino\"})", "refId": "A" }],
       "title": "Trino Status",
       "type": "stat"
     },
@@ -33,7 +33,7 @@
       "id": 2,
       "options": { "colorMode": "value", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
       "pluginVersion": "10.2.2",
-      "targets": [{ "expr": "up{job=\"openmetadata\"}", "refId": "A" }],
+      "targets": [{ "expr": "max(up{job=\"openmetadata\"}) or max(probe_success{job=\"openmetadata\"})", "refId": "A" }],
       "title": "OpenMetadata Status",
       "type": "stat"
     },
@@ -72,7 +72,7 @@
       "gridPos": { "h": 8, "w": 24, "x": 0, "y": 4 },
       "id": 5,
       "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } },
-      "targets": [{ "expr": "up", "legendFormat": "{{job}}", "refId": "A" }],
+      "targets": [{ "expr": "(max by (job) (up)) or (max by (job) (probe_success))", "legendFormat": "{{job}}", "refId": "A" }],
       "title": "All Services Health",
       "type": "timeseries"
     },
