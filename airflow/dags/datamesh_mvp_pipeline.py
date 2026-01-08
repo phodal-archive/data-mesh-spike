@@ -15,6 +15,7 @@ from airflow.exceptions import AirflowException
 import os
 import urllib.request
 import urllib.error
+from typing import List, Dict, Any
 
 # DAG 默认参数
 default_args = {
@@ -264,13 +265,13 @@ def generate_kpi_report(**context):
     return kpis
 
 
-def _read_sql_statements(sql_path: str) -> list[str]:
+def _read_sql_statements(sql_path: str) -> List[str]:
     """Very small SQL loader for .sql files with '--' comments and ';' terminators."""
     with open(sql_path, "r", encoding="utf-8") as f:
         lines = f.readlines()
 
-    statements: list[str] = []
-    buf: list[str] = []
+    statements: List[str] = []
+    buf: List[str] = []
 
     for raw in lines:
         line = raw.strip()
@@ -348,7 +349,7 @@ def refresh_data_products_views(**context):
     return {"applied_statements": applied, "sql_path": sql_path}
 
 
-def _push_quality_metrics(metrics: dict) -> None:
+def _push_quality_metrics(metrics: Dict[str, Any]) -> None:
     """Push quality metrics to Prometheus Pushgateway (best-effort)."""
     endpoint = os.environ.get("PUSHGATEWAY_URL", "http://pushgateway:9091")
     job = "datamesh_mvp_pipeline"

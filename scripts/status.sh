@@ -38,7 +38,7 @@ check_service() {
     fi
 }
 
-check_service "OpenMetadata" "http://localhost:8585/healthcheck"
+check_service "OpenMetadata" "http://localhost:8585/api/v1/system/version"
 check_service "Airflow" "http://localhost:8081/health"
 check_service "Trino" "http://localhost:8080/v1/info"
 check_service "Superset" "http://localhost:8089/health"
