@@ -88,6 +88,7 @@ pkill -f 'ssh.*colima.*-L'
 - **domain_orders**: 订单交易数据
 - **domain_products**: 产品目录数据
 - **domain_analytics**: 聚合分析数据
+- **knowledge-graph**: Data Mesh 架构元数据与概念关系 (Neo4j)
 
 ## OpenMetadata 元数据采集
 
@@ -177,11 +178,12 @@ JOIN mariadb.domain_products.products p ON oi.product_id = p.product_id;
 
 ## 数据产品 (Data Products)
 
-数据产品定义在 `domain_analytics` 域中，可通过 Trino/Superset 查询：
+数据产品定义在不同域中，可通过 Trino/Superset 查询：
 
-| 数据产品 | 描述 | 所有者 |
-|---------|------|--------|
-| dp_customer_360 | 客户全景视图 | 客户域 |
-| dp_product_sales | 产品销售分析 | 产品域 |
-| dp_order_fulfillment | 订单履行状态 | 订单域 |
-| dp_business_kpis | 业务 KPI 仪表板 | 分析域 |
+| 数据产品 | 描述 | 所有者 | 访问方式 |
+|---------|------|--------|----------|
+| dp_customer_360 | 客户全景视图 | 客户域 | SQL / Superset |
+| dp_product_sales | 产品销售分析 | 分析域 | SQL / Superset |
+| dp_order_fulfillment | 订单履行状态 | 订单域 | SQL / Superset |
+| dp_business_kpis | 业务 KPI 仪表板 | 分析域 | SQL / Superset |
+| **Domain Knowledge Graph** | **Data Mesh 架构元数据** | **知识图谱域** | **Neo4j Browser / Cypher** |

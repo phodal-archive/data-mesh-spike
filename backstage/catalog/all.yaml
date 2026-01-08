@@ -12,5 +12,6 @@ spec:
     - ./domain-orders.yaml
     - ./domain-products.yaml
     - ./domain-analytics.yaml
+    - ./domain-knowledge-graph.yaml
     - ./platform-components.yaml
 
