@@ -15,7 +15,13 @@ source:
       markDeletedTables: true
       includeTables: true
       includeViews: true
+      # In OpenMetadata's MySQL/MariaDB model:
+      # - "database" is the OpenMetadata Database entity (here it shows up as `default`)
+      # - "schema" maps to the MariaDB databases like `domain_customers`, `domain_orders`, etc.
       databaseFilterPattern:
+        includes:
+          - default
+      schemaFilterPattern:
         includes:
           - domain_customers
           - domain_orders
