@@ -1,0 +1,135 @@
+name: Data Mesh MVP - Smoke Test
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  smoke-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Start Data Mesh Stack 1 (Core Platform)
+        run: |
+          export AIRFLOW_UID=$(id -u)
+          docker compose -f docker-compose.stack1.yml up -d
+          echo "✅ Stack 1 started"
+
+      - name: Wait for services to be healthy
+        run: |
+          echo "⏳ Waiting for core services..."
+          timeout 300 bash -c 'until docker exec datamesh-mariadb mariadb -udatamesh -pdatamesh123 -e "SELECT 1" > /dev/null 2>&1; do sleep 2; done'
+          echo "✅ MariaDB ready"
+          
+          timeout 300 bash -c 'until curl -sf http://localhost:8080/v1/info > /dev/null 2>&1; do sleep 5; done'
+          echo "✅ Trino ready"
+          
+          timeout 300 bash -c 'until curl -sf http://localhost:8081/health > /dev/null 2>&1; do sleep 5; done'
+          echo "✅ Airflow ready"
+
+      - name: Initialize Data Products
+        run: |
+          ./scripts/init-data-products.sh
+          echo "✅ Data products initialized"
+
+      - name: Verify Trino cross-domain queries
+        run: |
+          echo "🔍 Testing Trino cross-domain queries..."
+          
+          # Test customer domain
+          CUSTOMER_COUNT=$(docker exec datamesh-trino trino --output-format TSV --execute "SELECT COUNT(*) FROM mariadb.domain_customers.customers" 2>/dev/null | grep -E '^[0-9]+$' | tail -1)
+          echo "Customers: $CUSTOMER_COUNT"
+          if [ "$CUSTOMER_COUNT" -lt 1 ]; then
+            echo "❌ No customers found"
+            exit 1
+          fi
+          
+          # Test orders domain
+          ORDER_COUNT=$(docker exec datamesh-trino trino --output-format TSV --execute "SELECT COUNT(*) FROM mariadb.domain_orders.orders" 2>/dev/null | grep -E '^[0-9]+$' | tail -1)
+          echo "Orders: $ORDER_COUNT"
+          if [ "$ORDER_COUNT" -lt 1 ]; then
+            echo "❌ No orders found"
+            exit 1
+          fi
+          
+          # Test products domain
+          PRODUCT_COUNT=$(docker exec datamesh-trino trino --output-format TSV --execute "SELECT COUNT(*) FROM mariadb.domain_products.products" 2>/dev/null | grep -E '^[0-9]+$' | tail -1)
+          echo "Products: $PRODUCT_COUNT"
+          if [ "$PRODUCT_COUNT" -lt 1 ]; then
+            echo "❌ No products found"
+            exit 1
+          fi
+          
+          echo "✅ All domain queries passed"
+
+      - name: Verify Data Products (dp_*)
+        run: |
+          echo "🧩 Testing data products..."
+          
+          DP_LIST=("dp_customer_360" "dp_product_sales" "dp_order_fulfillment" "dp_business_kpis")
+          
+          for dp in "${DP_LIST[@]}"; do
+            COUNT=$(docker exec datamesh-trino trino --output-format TSV --execute "SELECT COUNT(*) FROM mariadb.domain_analytics.$dp" 2>/dev/null | grep -E '^[0-9]+$' | tail -1)
+            if [ -z "$COUNT" ]; then
+              echo "❌ Data product $dp not found"
+              exit 1
+            fi
+            echo "✅ $dp: $COUNT rows"
+          done
+          
+          echo "✅ All data products verified"
+
+      - name: Verify OpenMetadata API
+        run: |
+          echo "📊 Testing OpenMetadata..."
+          timeout 300 bash -c 'until curl -sf http://localhost:8585/api/v1/system/version > /dev/null 2>&1; do sleep 5; done'
+          
+          VERSION=$(curl -s http://localhost:8585/api/v1/system/version)
+          if [ -z "$VERSION" ]; then
+            echo "❌ OpenMetadata API not responding"
+            exit 1
+          fi
+          echo "✅ OpenMetadata API: $VERSION"
+
+      - name: Run Airflow DAG validation
+        run: |
+          echo "🔄 Validating Airflow DAGs..."
+          
+          # Check if DAG is loaded
+          DAG_STATUS=$(docker exec datamesh-airflow-scheduler airflow dags list 2>/dev/null | grep datamesh_mvp_pipeline || echo "")
+          if [ -z "$DAG_STATUS" ]; then
+            echo "❌ datamesh_mvp_pipeline DAG not found"
+            exit 1
+          fi
+          echo "✅ datamesh_mvp_pipeline DAG loaded"
+
+      - name: Collect logs on failure
+        if: failure()
+        run: |
+          echo "📋 Collecting logs..."
+          docker compose -f docker-compose.stack1.yml logs --tail=100 > smoke-test-logs.txt
+          cat smoke-test-logs.txt
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker compose -f docker-compose.stack1.yml down -v
+          echo "🧹 Cleanup completed"
+
+      - name: Upload logs artifact
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-test-logs
+          path: smoke-test-logs.txt
+          retention-days: 7

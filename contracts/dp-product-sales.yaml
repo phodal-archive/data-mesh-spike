@@ -1,0 +1,133 @@
+# Data Contract: Product Sales Analytics Data Product
+
+dataContractSpecification: 0.9.3
+id: dp-product-sales
+info:
+  title: Product Sales Analytics
+  version: 1.0.0
+  description: |
+    产品销售分析数据产品，提供产品销售绩效、收入、订单量分析。
+    包含销售速度分类（Hot/Normal/Slow/No Sales）。
+  owner: Analytics Team
+  contact:
+    name: Analytics Team
+    email: analytics-team@datamesh.local
+
+servers:
+  production:
+    type: trino
+    host: datamesh-trino
+    port: 8080
+    catalog: mariadb
+    schema: domain_analytics
+
+models:
+  dp_product_sales:
+    description: Product sales performance analytics
+    type: view
+    fields:
+      product_id:
+        type: integer
+        required: true
+        primary: true
+        description: Unique product identifier
+        
+      product_name:
+        type: string
+        required: true
+        description: Product name
+        
+      category:
+        type: string
+        required: true
+        description: Product category
+        
+      current_price:
+        type: decimal
+        required: true
+        description: Current product price
+        
+      total_quantity_sold:
+        type: integer
+        required: true
+        description: Total units sold
+        
+      total_revenue:
+        type: decimal
+        required: true
+        description: Total revenue from this product
+        
+      order_count:
+        type: integer
+        required: true
+        description: Number of orders containing this product
+        
+      last_sold_date:
+        type: timestamp
+        required: false
+        description: Date of most recent sale
+        
+      sales_velocity:
+        type: string
+        required: true
+        description: Sales performance classification
+        enum: [Hot, Normal, Slow, "No Sales"]
+
+quality:
+  type: SodaCL
+  specification:
+    checks for dp_product_sales:
+      # Completeness
+      - row_count > 0:
+          name: Has products
+      - missing_count(product_id) = 0:
+          name: Product ID required
+      - duplicate_count(product_id) = 0:
+          name: Product ID unique
+      
+      # Validity
+      - current_price > 0:
+          name: Price must be positive
+      - total_quantity_sold >= 0:
+          name: Quantity sold non-negative
+      - total_revenue >= 0:
+          name: Revenue non-negative
+      - order_count >= 0:
+          name: Order count non-negative
+      - invalid_count(sales_velocity) = 0:
+          valid values: [Hot, Normal, Slow, "No Sales"]
+          name: Valid sales velocity
+      
+      # Consistency
+      - total_revenue = total_quantity_sold * current_price:
+          name: Revenue equals quantity * price
+          tolerance: 1%
+          severity: warning
+
+servicelevels:
+  - property: freshness
+    value: 24h
+    description: Daily refresh via Airflow DAG
+    
+  - property: availability
+    value: 99.5%
+    
+  - property: latency
+    value: < 5s
+
+links:
+  - type: documentation
+    url: http://localhost:7007/catalog/default/component/sales-analytics-data-product
+    
+  - type: catalog
+    url: http://localhost:8585/table/datamesh-mariadb.domain_analytics.dp_product_sales
+
+dependencies:
+  - name: domain_products.products
+    description: Product catalog source
+    
+  - name: domain_orders.order_items
+    description: Order line items
+    
+  - name: domain_orders.orders
+    description: Order headers

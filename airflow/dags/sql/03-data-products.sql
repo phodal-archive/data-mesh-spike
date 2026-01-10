@@ -1,11 +1,16 @@
 -- ============================================
 -- Data Mesh MVP: 数据产品 (Data Products)
--- 在分析域创建数据产品视图（供 Trino/Superset/消费方查询）
+-- 每个域发布自己的数据产品供其他域消费
 -- ============================================
 
+-- 在分析域创建数据产品视图
 USE domain_analytics;
 
+-- ============================================
 -- 数据产品 1: 客户360视图 (Customer 360)
+-- 所有者: 客户域
+-- 消费者: 营销、销售、客服
+-- ============================================
 CREATE OR REPLACE VIEW dp_customer_360 AS
 SELECT 
     c.customer_id,
@@ -34,7 +39,11 @@ LEFT JOIN (
     GROUP BY customer_id
 ) order_stats ON c.customer_id = order_stats.customer_id;
 
+-- ============================================
 -- 数据产品 2: 产品销售分析 (Product Sales Analytics)
+-- 所有者: 产品域
+-- 消费者: 库存管理、采购、营销
+-- ============================================
 CREATE OR REPLACE VIEW dp_product_sales AS
 SELECT 
     p.product_id,
@@ -65,7 +74,11 @@ LEFT JOIN (
     GROUP BY oi.product_id
 ) sales ON p.product_id = sales.product_id;
 
+-- ============================================
 -- 数据产品 3: 订单履行状态 (Order Fulfillment Status)
+-- 所有者: 订单域
+-- 消费者: 物流、客服、运营
+-- ============================================
 CREATE OR REPLACE VIEW dp_order_fulfillment AS
 SELECT 
     o.order_id,
@@ -90,7 +103,11 @@ LEFT JOIN (
     GROUP BY order_id
 ) item_count ON o.order_id = item_count.order_id;
 
+-- ============================================
 -- 数据产品 4: 业务 KPI 仪表板 (Business KPI Dashboard)
+-- 所有者: 分析域
+-- 消费者: 管理层、BI团队
+-- ============================================
 CREATE OR REPLACE VIEW dp_business_kpis AS
 SELECT 
     DATE(NOW()) AS report_date,

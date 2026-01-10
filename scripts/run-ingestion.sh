@@ -70,4 +70,14 @@ fi
 
 echo ""
 echo "✅ Ingestion completed! Visit http://localhost:8585 to explore the data catalog."
+echo ""
+echo "🔗 Populating lineage relationships..."
+echo ""
+
+# Run lineage population script
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+python3 "$SCRIPT_DIR/populate-lineage.py"
+
+echo ""
+echo "✅ Done! Data catalog and lineage are ready."
 

@@ -1,0 +1,133 @@
+# Data Contract: Business KPIs Dashboard
+
+dataContractSpecification: 0.9.3
+id: dp-business-kpis
+info:
+  title: Business KPI Dashboard
+  version: 1.0.0
+  description: |
+    核心业务指标数据产品，包括客户数、订单数、收入、订单状态分布等。
+    为管理层提供业务健康度快照。
+  owner: Analytics Team
+  contact:
+    name: Analytics Team
+    email: analytics-team@datamesh.local
+
+servers:
+  production:
+    type: trino
+    host: datamesh-trino
+    port: 8080
+    catalog: mariadb
+    schema: domain_analytics
+
+models:
+  dp_business_kpis:
+    description: Business KPIs snapshot
+    type: view
+    fields:
+      report_date:
+        type: date
+        required: true
+        primary: true
+        description: Report generation date
+        
+      total_customers:
+        type: integer
+        required: true
+        description: Total number of customers
+        
+      total_products:
+        type: integer
+        required: true
+        description: Total number of products
+        
+      total_orders:
+        type: integer
+        required: true
+        description: Total number of orders
+        
+      total_revenue:
+        type: decimal
+        required: true
+        description: Total revenue (excluding cancelled)
+        
+      avg_order_value:
+        type: decimal
+        required: true
+        description: Average order value
+        
+      pending_orders:
+        type: integer
+        required: true
+        description: Orders in pending status
+        
+      processing_orders:
+        type: integer
+        required: true
+        description: Orders in processing status
+        
+      shipped_orders:
+        type: integer
+        required: true
+        description: Orders in shipped status
+        
+      delivered_orders:
+        type: integer
+        required: true
+        description: Orders in delivered status
+
+quality:
+  type: SodaCL
+  specification:
+    checks for dp_business_kpis:
+      # Completeness
+      - row_count = 1:
+          name: Single daily snapshot
+      - missing_count(report_date) = 0:
+          name: Report date required
+      
+      # Validity
+      - total_customers > 0:
+          name: Must have customers
+      - total_products > 0:
+          name: Must have products
+      - total_orders >= 0:
+          name: Orders non-negative
+      - total_revenue >= 0:
+          name: Revenue non-negative
+      - avg_order_value > 0:
+          name: AOV must be positive
+      
+      # Consistency
+      - total_orders = pending_orders + processing_orders + shipped_orders + delivered_orders:
+          name: Order status counts match total
+          severity: critical
+      
+      # Business rules
+      - avg_order_value > 50:
+          name: AOV threshold check
+          severity: warning
+      - total_revenue > 1000:
+          name: Minimum daily revenue check
+          severity: warning
+
+servicelevels:
+  - property: freshness
+    value: 24h
+    description: Daily snapshot
+    
+  - property: availability
+    value: 99.9%
+    
+  - property: latency
+    value: < 2s
+
+links:
+  - type: catalog
+    url: http://localhost:8585/table/datamesh-mariadb.domain_analytics.dp_business_kpis
+
+dependencies:
+  - name: domain_customers.customers
+  - name: domain_orders.orders
+  - name: domain_products.products

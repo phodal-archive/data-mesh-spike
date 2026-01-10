@@ -102,22 +102,51 @@ pkill -f 'ssh.*colima.*-L'
 
 - 扫描所有数据域 (domain_customers, domain_orders, domain_products, domain_analytics)
 - 将表结构、列信息导入 OpenMetadata
-- 可在 http://localhost:8585 查看数据目录
+- **自动建立数据血缘关系**（dp_* 视图的上游表依赖）
+- 可在 http://localhost:8585 查看数据目录和血缘图
+
+## 数据契约 (Data Contracts)
+
+Data Mesh MVP 实现了基于 YAML 的数据契约框架：
+
+```bash
+# 数据契约位于
+contracts/dp-customer-360.yaml
+contracts/dp-product-sales.yaml
+contracts/dp-business-kpis.yaml
+```
+
+每个契约定义：
+- **数据模型**：字段类型、必填性、PII 标记
+- **质量规则**：完整性、一致性、业务规则（SodaCL 格式）
+- **服务等级**：刷新频率、可用性、延迟、完整性目标
+- **依赖关系**：上游数据源和下游消费者
+- **链接**：Backstage、OpenMetadata、Trino 入口
+
+Airflow DAG 会自动加载契约并验证质量规则，失败时阻断管道。
+
+详细文档：[contracts/README.md](contracts/README.md)
 
 ## 数据质量验证
 
-Data Mesh MVP 包含完整的数据质量检查管道，在每次数据刷新前验证质量：
+Data Mesh MVP 包含完整的数据质量检查管道，在每次数据刷新后验证质量：
 
 ```bash
 # 查看最新的质量检查结果
 ./scripts/view-quality-logs.sh
 ```
 
-质量规则包括：
+### 两层质量验证
 
-- **完整性检查**: 主键非空、参照完整性、业务规则
-- **一致性检查**: 跨表金额匹配、外键有效性
-- **新鲜度检查**: 数据更新时效性
+1. **契约驱动验证** (Contract-Driven)
+   - 从 `contracts/*.yaml` 加载质量规则
+   - 执行 SodaCL 格式的检查（完整性、有效性、一致性）
+   - 关键失败自动阻断管道
+   - 指标推送到 Prometheus/Grafana
+
+2. **传统验证** (Legacy)
+   - 手工编写的质量检查（向后兼容）
+   - 包含完整性、一致性、新鲜度检查
 
 详细演示文档：[docs/task-c-data-quality-validation.md](docs/task-c-data-quality-validation.md)
 

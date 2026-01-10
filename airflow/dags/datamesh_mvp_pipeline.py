@@ -16,6 +16,7 @@ import os
 import urllib.request
 import urllib.error
 from typing import List, Dict, Any
+from data_contract_validator import ContractLoader, QualityCheckExecutor
 
 # DAG 默认参数
 default_args = {
@@ -46,6 +47,125 @@ def log_pipeline_start(**context):
     print(f"Execution Date: {context['ds']}")
     print("=" * 50)
     return "Pipeline started successfully"
+
+
+def validate_data_contracts(**context):
+    """
+    验证数据契约 - 从 YAML 加载质量规则并执行
+    """
+    print("=" * 60)
+    print("📜 Data Contract Validation Started")
+    print("=" * 60)
+    
+    # Load contracts
+    dag_dir = os.path.dirname(os.path.abspath(__file__))
+    project_dir = os.path.dirname(os.path.dirname(dag_dir))
+    contracts_dir = os.path.join(project_dir, 'contracts')
+    
+    loader = ContractLoader(contracts_dir)
+    contracts = loader.load_all_contracts()
+    
+    if not contracts:
+        print("⚠️  No contracts found, skipping contract validation")
+        return {'status': 'skipped', 'reason': 'no_contracts'}
+    
+    print(f"\n📋 Loaded {len(contracts)} data contracts:")
+    for contract in contracts:
+        print(f"  • {contract.title} (v{contract.version}) - {contract.owner}")
+    
+    # Connect to database
+    conn = mysql.connector.connect(
+        host='datamesh-mariadb',
+        user='datamesh',
+        password='datamesh123',
+        database='domain_analytics'
+    )
+    cursor = conn.cursor()
+    
+    executor = QualityCheckExecutor(cursor)
+    
+    all_results = []
+    total_checks = 0
+    passed_checks = 0
+    failed_checks = 0
+    warning_checks = 0
+    
+    # Execute checks for each contract
+    for contract in contracts:
+        print(f"\n{'=' * 60}")
+        print(f"🔍 Validating: {contract.title}")
+        print(f"{'=' * 60}")
+        
+        checks = contract.get_quality_checks()
+        
+        if not checks:
+            print(f"  ⚠️  No quality checks defined")
+            continue
+        
+        print(f"  Running {len(checks)} quality checks...")
+        
+        for check in checks:
+            total_checks += 1
+            result = executor.execute_check(check, 'domain_analytics')
+            
+            severity_icon = {
+                'critical': '🔴',
+                'warning': '⚠️',
+                'info': 'ℹ️'
+            }.get(result['severity'], '•')
+            
+            if result['passed']:
+                passed_checks += 1
+                print(f"    ✓ {result['message']}")
+            else:
+                if result['severity'] == 'warning':
+                    warning_checks += 1
+                    print(f"    {severity_icon} {result['message']} (warning)")
+                else:
+                    failed_checks += 1
+                    print(f"    ✗ {result['message']}")
+                
+                if 'actual' in result:
+                    print(f"      Actual: {result['actual']}, Expected: {result.get('threshold', 'N/A')}")
+            
+            all_results.append(result)
+    
+    cursor.close()
+    conn.close()
+    
+    # Summary
+    print(f"\n{'=' * 60}")
+    print("📊 Contract Validation Summary")
+    print(f"{'=' * 60}")
+    print(f"  Total checks:   {total_checks}")
+    print(f"  ✓ Passed:       {passed_checks}")
+    print(f"  ✗ Failed:       {failed_checks}")
+    print(f"  ⚠ Warnings:     {warning_checks}")
+    print(f"  Pass rate:      {passed_checks/total_checks*100:.1f}%")
+    print(f"{'=' * 60}")
+    
+    # Push metrics
+    _push_quality_metrics({
+        "datamesh_contract_checks_total": total_checks,
+        "datamesh_contract_checks_passed": passed_checks,
+        "datamesh_contract_checks_failed": failed_checks,
+        "datamesh_contract_pass_rate": passed_checks/total_checks*100 if total_checks > 0 else 0,
+    })
+    
+    # Fail if critical checks failed
+    critical_failures = [r for r in all_results if not r['passed'] and r['severity'] == 'critical']
+    if critical_failures:
+        raise AirflowException(
+            f"❌ {len(critical_failures)} critical contract checks failed! Pipeline blocked."
+        )
+    
+    return {
+        'total': total_checks,
+        'passed': passed_checks,
+        'failed': failed_checks,
+        'warnings': warning_checks,
+        'pass_rate': passed_checks/total_checks*100 if total_checks > 0 else 0
+    }
 
 
 def validate_data_quality(**context):
@@ -391,6 +511,13 @@ start_task = PythonOperator(
     dag=dag,
 )
 
+# 契约验证（基于 YAML）
+validate_contracts = PythonOperator(
+    task_id='validate_data_contracts',
+    python_callable=validate_data_contracts,
+    dag=dag,
+)
+
 validate_quality = PythonOperator(
     task_id='validate_data_quality',
     python_callable=validate_data_quality,
@@ -417,5 +544,6 @@ notify_ready = PythonOperator(
 )
 
 # 定义任务依赖关系
-start_task >> validate_quality >> refresh_data_products_task >> generate_report >> notify_ready
+# 先刷新数据产品，然后验证契约和质量，最后生成报告
+start_task >> refresh_data_products_task >> [validate_contracts, validate_quality] >> generate_report >> notify_ready
 

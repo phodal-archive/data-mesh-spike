@@ -10,7 +10,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 cd "$PROJECT_DIR"
 
-SQL_FILE="${1:-examples/datamesh-mvp/sql/03-data-products.sql}"
+SQL_FILE="${1:-airflow/dags/sql/03-data-products.sql}"
 
 if [ ! -f "$SQL_FILE" ]; then
   echo "❌ SQL file not found: $SQL_FILE"

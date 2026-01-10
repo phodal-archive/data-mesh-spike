@@ -29,12 +29,13 @@ class TestDAGSyntax:
         assert dag.dag_id == 'datamesh_mvp_pipeline'
         
         # 检查任务数量
-        assert len(dag.tasks) == 5, f"Expected 5 tasks, got {len(dag.tasks)}"
+        assert len(dag.tasks) == 6, f"Expected 6 tasks, got {len(dag.tasks)}"
         
         # 检查任务列表
         task_ids = sorted([task.task_id for task in dag.tasks])
         expected_tasks = sorted([
             'start_pipeline',
+            'validate_data_contracts',
             'validate_data_quality',
             'refresh_data_products',
             'generate_kpi_report',
@@ -124,7 +125,9 @@ class TestTaskOperators:
         
         python_tasks = [
             'start_pipeline',
+            'validate_data_contracts',
             'validate_data_quality',
+            'refresh_data_products',
             'generate_kpi_report',
             'notify_data_products_ready'
         ]
@@ -133,15 +136,6 @@ class TestTaskOperators:
             task = dag.get_task(task_id)
             assert isinstance(task, PythonOperator), \
                 f"Task {task_id} should be PythonOperator"
-
-    def test_bash_operator(self):
-        """测试 BashOperator 任务"""
-        from datamesh_mvp_pipeline import dag
-        from airflow.operators.bash import BashOperator
-        
-        task = dag.get_task('refresh_data_products')
-        assert isinstance(task, BashOperator), \
-            "Task refresh_data_products should be BashOperator"
 
 
 if __name__ == '__main__':

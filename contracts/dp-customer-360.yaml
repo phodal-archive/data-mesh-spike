@@ -1,0 +1,166 @@
+# Data Contract: Customer 360 Data Product
+# Based on: https://datacontract.com/
+
+dataContractSpecification: 0.9.3
+id: dp-customer-360
+info:
+  title: Customer 360 View
+  version: 1.0.0
+  description: |
+    客户全景视图数据产品，整合客户基本信息与订单历史。
+    提供客户分层（Bronze/Silver/Gold）和消费行为洞察。
+  owner: Customer Team
+  contact:
+    name: Customer Team
+    email: customer-team@datamesh.local
+
+servers:
+  production:
+    type: trino
+    host: datamesh-trino
+    port: 8080
+    catalog: mariadb
+    schema: domain_analytics
+    description: Production Trino query engine
+
+models:
+  dp_customer_360:
+    description: Customer 360 view with order statistics
+    type: view
+    fields:
+      customer_id:
+        type: integer
+        required: true
+        primary: true
+        description: Unique customer identifier
+        pii: false
+      
+      email:
+        type: string
+        required: true
+        description: Customer email address
+        pii: true
+        classification: PII
+        
+      full_name:
+        type: string
+        required: true
+        description: Customer full name (first + last)
+        pii: true
+        classification: PII
+      
+      customer_since:
+        type: timestamp
+        required: true
+        description: Customer registration date
+        pii: false
+      
+      total_orders:
+        type: integer
+        required: true
+        description: Total number of completed orders
+        pii: false
+        
+      total_spent:
+        type: decimal
+        required: true
+        description: Total amount spent by customer
+        pii: false
+        
+      avg_order_value:
+        type: decimal
+        required: true
+        description: Average order value
+        pii: false
+        
+      last_order_date:
+        type: timestamp
+        required: false
+        description: Date of most recent order
+        pii: false
+        
+      customer_tier:
+        type: string
+        required: true
+        description: Customer tier (Bronze/Silver/Gold)
+        enum: [Bronze, Silver, Gold]
+        pii: false
+
+quality:
+  type: SodaCL  # Great Expectations, dbt tests, etc.
+  specification:
+    checks for dp_customer_360:
+      # Completeness checks
+      - row_count > 0:
+          name: Has customers
+      - missing_count(customer_id) = 0:
+          name: Customer ID must not be null
+      - duplicate_count(customer_id) = 0:
+          name: Customer ID must be unique
+      - missing_count(email) = 0:
+          name: Email must not be null
+      
+      # Validity checks
+      - invalid_count(customer_tier) = 0:
+          valid values: [Bronze, Silver, Gold]
+          name: Customer tier must be valid
+      - invalid_percent(email) < 1%:
+          valid regex: ^[^@]+@[^@]+\.[^@]+$
+          name: Email must be valid format
+      
+      # Consistency checks
+      - total_orders >= 0:
+          name: Total orders must be non-negative
+      - total_spent >= 0:
+          name: Total spent must be non-negative
+      - avg_order_value >= 0:
+          name: Avg order value must be non-negative
+      
+      # Business rules
+      - avg_row(total_spent) > 100:
+          name: Average customer value should be > $100
+          severity: warning
+
+servicelevels:
+  - property: freshness
+    value: 1h
+    description: Data refreshed every hour via Airflow DAG
+    
+  - property: availability
+    value: 99.9%
+    description: Available 99.9% of the time (excluding planned maintenance)
+    
+  - property: latency
+    value: < 5s
+    description: Query response time < 5 seconds for typical queries
+    
+  - property: completeness
+    value: 100%
+    description: All non-nullable fields must be populated
+
+links:
+  - type: documentation
+    url: http://localhost:7007/catalog/default/component/customers-data-product
+    description: Backstage catalog entry
+    
+  - type: query-ui
+    url: http://localhost:8080
+    description: Trino query interface
+    
+  - type: catalog
+    url: http://localhost:8585/table/datamesh-mariadb.domain_analytics.dp_customer_360
+    description: OpenMetadata catalog entry
+
+dependencies:
+  - name: domain_customers.customers
+    description: Source table for customer master data
+    
+  - name: domain_orders.orders
+    description: Source table for order statistics
+
+schema:
+  - name: domain_customers
+    description: Customer domain - master data source
+    
+  - name: domain_orders
+    description: Orders domain - transaction data source
