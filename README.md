@@ -69,18 +69,18 @@ pkill -f 'ssh.*colima.*-L'
 
 ## 服务端口
 
-| 服务 | 端口 | 用途 | 凭证 |
-|------|------|------|------|
-| OpenMetadata | 8585 | 数据目录 | admin/admin |
-| Trino | 8080 | 联邦查询 | - |
-| Airflow | 8081 | 数据编排 | admin/admin |
-| **Superset** | **8089** | **BI 报表** | **admin/admin** |
-| **Neo4j** | **7474** | **知识图谱** | **neo4j/datamesh123** |
-| Backstage | 7007 | 开发者门户 | - |
-| Grafana | 3000 | 运维监控 | admin/admin |
-| Prometheus | 9090 | 指标存储 | - |
-| Jaeger | 16686 | 分布式追踪 | - |
-| MariaDB | 3306 | 数据存储 | datamesh/datamesh123 |
+| 服务           | 端口       | 用途        | 凭证                    |
+|--------------|----------|-----------|-----------------------|
+| OpenMetadata | 8585     | 数据目录      | admin/admin           |
+| Trino        | 8080     | 联邦查询      | -                     |
+| Airflow      | 8081     | 数据编排      | admin/admin           |
+| **Superset** | **8089** | **BI 报表** | **admin/admin**       |
+| **Neo4j**    | **7474** | **知识图谱**  | **neo4j/datamesh123** |
+| Backstage    | 7007     | 开发者门户     | -                     |
+| Grafana      | 3000     | 运维监控      | admin/admin           |
+| Prometheus   | 9090     | 指标存储      | -                     |
+| Jaeger       | 16686    | 分布式追踪     | -                     |
+| MariaDB      | 3306     | 数据存储      | datamesh/datamesh123  |
 
 ## 数据域
 
@@ -99,6 +99,7 @@ pkill -f 'ssh.*colima.*-L'
 ```
 
 这将自动：
+
 - 扫描所有数据域 (domain_customers, domain_orders, domain_products, domain_analytics)
 - 将表结构、列信息导入 OpenMetadata
 - 可在 http://localhost:8585 查看数据目录
@@ -113,6 +114,7 @@ Data Mesh MVP 包含完整的数据质量检查管道，在每次数据刷新前
 ```
 
 质量规则包括：
+
 - **完整性检查**: 主键非空、参照完整性、业务规则
 - **一致性检查**: 跨表金额匹配、外键有效性
 - **新鲜度检查**: 数据更新时效性
@@ -125,12 +127,12 @@ Data Mesh MVP 包含完整的数据质量检查管道，在每次数据刷新前
 
 1. 访问 http://localhost:8089 (admin/admin)
 2. 添加 Trino 数据源：
-   - Settings → Database Connections → + Database → Trino
-   - SQLAlchemy URI: `trino://trino@datamesh-trino:8080/mariadb`
+    - Settings → Database Connections → + Database → Trino
+    - SQLAlchemy URI: `trino://trino@datamesh-trino:8080/mariadb`
 3. 创建数据集和图表，例如：
-   - 客户 360 视图: `SELECT * FROM domain_analytics.dp_customer_360`
-   - 产品销售: `SELECT * FROM domain_analytics.dp_product_sales`
-   - 业务 KPI: `SELECT * FROM domain_analytics.dp_business_kpis`
+    - 客户 360 视图: `SELECT * FROM domain_analytics.dp_customer_360`
+    - 产品销售: `SELECT * FROM domain_analytics.dp_product_sales`
+    - 业务 KPI: `SELECT * FROM domain_analytics.dp_business_kpis`
 
 ## 领域知识图谱 (Neo4j)
 
@@ -165,25 +167,24 @@ RETURN t, d
 
 ```sql
 -- 销售分析 - 跨域联邦查询
-SELECT
-  c.first_name || ' ' || c.last_name as customer_name,
-  p.name as product_name,
-  o.order_date,
-  oi.quantity * oi.unit_price as line_total
+SELECT c.first_name || ' ' || c.last_name as customer_name,
+       p.name                             as product_name,
+       o.order_date,
+       oi.quantity * oi.unit_price        as line_total
 FROM mariadb.domain_orders.orders o
-JOIN mariadb.domain_orders.order_items oi ON o.order_id = oi.order_id
-JOIN mariadb.domain_customers.customers c ON o.customer_id = c.customer_id
-JOIN mariadb.domain_products.products p ON oi.product_id = p.product_id;
+         JOIN mariadb.domain_orders.order_items oi ON o.order_id = oi.order_id
+         JOIN mariadb.domain_customers.customers c ON o.customer_id = c.customer_id
+         JOIN mariadb.domain_products.products p ON oi.product_id = p.product_id;
 ```
 
 ## 数据产品 (Data Products)
 
 数据产品定义在不同域中，可通过 Trino/Superset 查询：
 
-| 数据产品 | 描述 | 所有者 | 访问方式 |
-|---------|------|--------|----------|
-| dp_customer_360 | 客户全景视图 | 客户域 | SQL / Superset |
-| dp_product_sales | 产品销售分析 | 分析域 | SQL / Superset |
-| dp_order_fulfillment | 订单履行状态 | 订单域 | SQL / Superset |
-| dp_business_kpis | 业务 KPI 仪表板 | 分析域 | SQL / Superset |
+| 数据产品                       | 描述                  | 所有者       | 访问方式                       |
+|----------------------------|---------------------|-----------|----------------------------|
+| dp_customer_360            | 客户全景视图              | 客户域       | SQL / Superset             |
+| dp_product_sales           | 产品销售分析              | 分析域       | SQL / Superset             |
+| dp_order_fulfillment       | 订单履行状态              | 订单域       | SQL / Superset             |
+| dp_business_kpis           | 业务 KPI 仪表板          | 分析域       | SQL / Superset             |
 | **Domain Knowledge Graph** | **Data Mesh 架构元数据** | **知识图谱域** | **Neo4j Browser / Cypher** |
