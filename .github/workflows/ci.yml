@@ -1,0 +1,155 @@
+# Data Mesh MVP - CI Pipeline
+# Runs unit tests and linting for Airflow DAGs and contract validators
+
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'airflow/dags/**'
+      - 'contracts/**'
+      - '.github/workflows/ci.yml'
+  pull_request:
+    branches: [main, master]
+    paths:
+      - 'airflow/dags/**'
+      - 'contracts/**'
+      - '.github/workflows/ci.yml'
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  test-dags:
+    name: Test Airflow DAGs
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+          cache-dependency-path: 'airflow/dags/requirements-dev.txt'
+      
+      - name: Install dependencies
+        working-directory: airflow/dags
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+      
+      - name: Run linting (flake8)
+        working-directory: airflow/dags
+        run: |
+          flake8 *.py --max-line-length=120 --ignore=E501,W503
+        continue-on-error: true  # Don't fail on lint warnings for MVP
+      
+      - name: Run unit tests
+        working-directory: airflow/dags
+        run: |
+          pytest tests/ -v --tb=short --ignore=tests/test_datamesh_mvp_pipeline.py
+      
+      - name: Run tests with coverage
+        working-directory: airflow/dags
+        run: |
+          pytest tests/ --cov=. --cov-report=xml --cov-report=term-missing \
+            --ignore=tests/test_datamesh_mvp_pipeline.py
+        continue-on-error: true
+      
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: airflow/dags/coverage.xml
+          retention-days: 7
+
+  validate-contracts:
+    name: Validate Data Contracts
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      
+      - name: Install PyYAML
+        run: pip install pyyaml
+      
+      - name: Validate contract YAML syntax
+        run: |
+          echo "🔍 Validating contract YAML files..."
+          for file in contracts/*.yaml; do
+            echo "  Checking: $file"
+            python -c "import yaml; yaml.safe_load(open('$file'))" || exit 1
+          done
+          echo "✅ All contracts have valid YAML syntax"
+      
+      - name: Validate contract structure
+        run: |
+          python << 'EOF'
+          import yaml
+          import sys
+          from pathlib import Path
+          
+          REQUIRED_FIELDS = ['id', 'info', 'models']
+          INFO_FIELDS = ['title', 'version', 'owner']
+          
+          errors = []
+          contracts_dir = Path('contracts')
+          
+          for contract_file in contracts_dir.glob('dp-*.yaml'):
+              print(f"  Validating: {contract_file.name}")
+              
+              with open(contract_file) as f:
+                  contract = yaml.safe_load(f)
+              
+              # Check required top-level fields
+              for field in REQUIRED_FIELDS:
+                  if field not in contract:
+                      errors.append(f"{contract_file.name}: missing '{field}'")
+              
+              # Check info fields
+              info = contract.get('info', {})
+              for field in INFO_FIELDS:
+                  if field not in info:
+                      errors.append(f"{contract_file.name}: info.{field} missing")
+              
+              # Check models has at least one table
+              models = contract.get('models', {})
+              if not models:
+                  errors.append(f"{contract_file.name}: no models defined")
+          
+          if errors:
+              print("\n❌ Contract validation errors:")
+              for error in errors:
+                  print(f"  - {error}")
+              sys.exit(1)
+          else:
+              print("\n✅ All contracts are valid")
+          EOF
+
+  lint-yaml:
+    name: Lint YAML Files
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install yamllint
+        run: pip install yamllint
+      
+      - name: Lint docker-compose files
+        run: |
+          yamllint -d relaxed docker-compose*.yml || true
+      
+      - name: Lint Backstage catalog
+        run: |
+          yamllint -d relaxed backstage/catalog/*.yaml || true

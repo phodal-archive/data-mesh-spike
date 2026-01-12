@@ -18,6 +18,25 @@ import urllib.error
 from typing import List, Dict, Any
 from data_contract_validator import ContractLoader, QualityCheckExecutor
 
+# ============================================================
+# Critical Quality Checks Configuration
+# These checks will block the pipeline if they fail
+# ============================================================
+CRITICAL_QUALITY_CHECKS = {
+    # Primary key / uniqueness checks
+    "customers.customer_id: 非空且唯一",
+    "customers.customer_id: primary key valid",
+    # Referential integrity checks  
+    "orders: 所有订单有有效客户",
+    "orders: all orders have valid customer",
+    # Data consistency checks
+    "orders.total_amount = SUM(order_items)",
+    "order_total_consistency",
+    # Product data integrity
+    "order_items: 产品必须存在于 products",
+    "order_items: products must exist",
+}
+
 # DAG 默认参数
 default_args = {
     'owner': 'datamesh-team',
@@ -354,10 +373,15 @@ def validate_data_quality(**context):
     )
     
     # 如果有失败的关键检查，抛出异常阻止管道继续
-    critical_failures = [f for f in failed_checks if '订单总额' in f or '主键' in f]
+    # 使用结构化规则：检查名称必须在 CRITICAL_QUALITY_CHECKS 中
+    critical_failures = [
+        f for f in failed_checks 
+        if f in CRITICAL_QUALITY_CHECKS or any(c in f for c in CRITICAL_QUALITY_CHECKS)
+    ]
     if critical_failures:
         raise AirflowException(
-            f"❌ 关键质量检查失败！管道已阻止。失败项: {', '.join(critical_failures)}"
+            f"❌ Critical quality checks failed! Pipeline blocked. "
+            f"Failed checks: {', '.join(critical_failures)}"
         )
     
     return quality_result
