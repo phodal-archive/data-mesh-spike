@@ -22,29 +22,30 @@ metadata:
   title: Data Product - Domain Knowledge Graph
   description: |
     Data Mesh 领域知识图谱数据产品
-    
+
     提供 Data Mesh 架构中的概念、领域、数据产品、平台组件和团队之间的关系图谱。
     这是一个元数据产品，帮助理解和导航整个 Data Mesh 生态系统。
-    
+
     **数据内容**:
-    - Data Mesh 核心概念 (Domain Ownership, Data as Product, Self-Serve Platform, Federated Governance)
+    - Data Mesh 核心概念 (Domain Ownership, Data as Product, Self-Serve Platform,
+      Federated Governance)
     - 业务领域定义与关系
     - 数据产品清单与依赖
     - 平台组件交互关系
     - 团队所有权映射
     - 治理概念与实施
-    
+
     **访问方式**:
     - Neo4j Browser: http://localhost:7474
     - Bolt Protocol: bolt://localhost:7687
     - HTTP API: http://localhost:7474/db/neo4j/tx
-    
+
     **查询示例**:
     ```cypher
     // 查看所有数据产品及其依赖
     MATCH (d:Domain)-[:OWNS]->(dp:DataProduct)-[:CONSUMES_FROM]->(source:Domain)
     RETURN d.name_cn as owner, dp.name_cn as product, source.name_cn as source
-    
+
     // 查看团队职责范围
     MATCH (t:Team)-[:OWNS|MAINTAINS]->(entity)
     RETURN t.name_cn as team, labels(entity)[0] as type, entity.name as name
@@ -75,7 +76,7 @@ spec:
   dependsOn:
     - component:openmetadata-catalog
     - component:backstage
-  
+
 ---
 apiVersion: backstage.io/v1alpha1
 kind: API
@@ -94,7 +95,7 @@ spec:
     # Neo4j Bolt Protocol
     Connection: bolt://localhost:7687
     Authentication: neo4j/datamesh123
-    
+
     # Example Query
     MATCH (n:DataProduct) RETURN n
 
@@ -137,4 +138,3 @@ spec:
                           statement:
                             type: string
                             example: "MATCH (n) RETURN n LIMIT 10"
-
